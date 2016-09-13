@@ -22,9 +22,37 @@
  * SOFTWARE.
  */
 
+// This content script runs in an isolated environment and cannot modify any
+// javascript variables on the youtube page. Thus, we have to inject another
+// script into the DOM.
+
+// Set defaults for options stored in localStorage
+if (localStorage['h264ify-enable'] === undefined) {
+  localStorage['h264ify-enable'] = true;
+}
+if (localStorage['h264ify-block_60fps'] === undefined) {
+  localStorage['h264ify-block_60fps'] = false;
+}
+
+// Cache chrome.storage.local options in localStorage.
+// This is needed because chrome.storage.local.get() is async and we want to
+// load the injection script immediately.
+// See https://bugs.chromium.org/p/chromium/issues/detail?id=54257
+chrome.storage.local.get({
+  // Set defaults
+  enable: true,
+  block_60fps: false
+ }, function(options) {
+   localStorage['h264ify-enable'] = options.enable;
+   localStorage['h264ify-block_60fps'] = options.block_60fps;
+ }
+);
+
 var injectScript = document.createElement('script');
-injectScript.src = chrome.extension.getURL('src/inject/inject.js');
+// Use textContent instead of src to run inject() synchronously
+injectScript.textContent = inject.toString() + "inject();";
 injectScript.onload = function() {
+  // Remove <script> node after injectScript runs.
   this.parentNode.removeChild(this);
 };
 (document.head || document.documentElement).appendChild(injectScript);
